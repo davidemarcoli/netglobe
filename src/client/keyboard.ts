@@ -2,6 +2,8 @@ export type KeyAction =
   | 'unmapped'
   | 'lan_local'
   | 'open_ports'
+  | 'insights'
+  | 'toggle_view'
   | 'cache_terminal'
   | 'clear_cache'
   | 'recheck_geoip'
@@ -13,6 +15,8 @@ const KEY_MAP: Record<string, KeyAction> = {
   u: 'unmapped',
   l: 'lan_local',
   o: 'open_ports',
+  i: 'insights',
+  v: 'toggle_view',
   t: 'cache_terminal',
   c: 'clear_cache',
   r: 'recheck_geoip',
@@ -23,7 +27,6 @@ const KEY_MAP: Record<string, KeyAction> = {
 
 export function initKeyboard(handler: (action: KeyAction) => void) {
   document.addEventListener('keydown', (e) => {
-    // Ignore if typing in an input/textarea
     const tag = (e.target as HTMLElement).tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 

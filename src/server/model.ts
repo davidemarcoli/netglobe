@@ -1,7 +1,9 @@
 import { createConnection } from 'net';
 import * as ipaddr from 'ipaddr.js';
-import { getConnections, ConnectionRecord } from './netinfo.js';
+import { getConnections } from './netinfo.js';
 import { GeoInfo, GeoResult } from './geoinfo.js';
+import { DnsResolver } from './dnsinfo.js';
+import { readTcpQueues } from './bandwidth.js';
 import { COORD_PRECISION } from './config.js';
 
 export type Scope = 'PUBLIC' | 'LAN' | 'LOCAL';
@@ -22,6 +24,9 @@ export interface CacheItem {
   country: string | null;
   asn: number | null;
   asnOrg: string | null;
+  hostname: string | null;
+  txQueue: number;
+  rxQueue: number;
 }
 
 export interface OpenPort {
@@ -48,6 +53,8 @@ export interface MapCandidate {
   asnOrg: string | null;
   processLabel: string;
   pid: number | null;
+  hostname: string | null;
+  queueBytes: number;
 }
 
 export interface Snapshot {
@@ -66,7 +73,6 @@ export interface Snapshot {
   };
 }
 
-// Common port-to-service name map
 const SERVICE_NAMES: Record<number, string> = {
   20: 'ftp-data', 21: 'ftp', 22: 'ssh', 23: 'telnet', 25: 'smtp',
   53: 'dns', 67: 'dhcp', 68: 'dhcp', 80: 'http', 110: 'pop3',
@@ -125,15 +131,18 @@ async function checkInternet(): Promise<boolean> {
 
 export class Model {
   private geo: GeoInfo;
+  private dns: DnsResolver;
 
-  constructor(geo: GeoInfo) {
+  constructor(geo: GeoInfo, dns: DnsResolver) {
     this.geo = geo;
+    this.dns = dns;
   }
 
   async snapshot(): Promise<Snapshot> {
-    const [online, connections] = await Promise.all([
+    const [online, connections, queueMap] = await Promise.all([
       checkInternet(),
       getConnections(),
+      readTcpQueues(),
     ]);
 
     const cacheItems: CacheItem[] = [];
@@ -141,13 +150,22 @@ export class Model {
     const openPorts: OpenPort[] = [];
     let tcpEst = 0, tcpLst = 0, udpR = 0, udpB = 0;
 
+    // Collect public IPs for batch DNS resolution
+    const publicIps: string[] = [];
+
+    // First pass: classify and build items (without DNS)
+    interface PendingItem {
+      item: CacheItem;
+      mapCandidate: MapCandidate | null;
+    }
+    const pending: PendingItem[] = [];
+
     for (const conn of connections) {
       const isTcp = conn.proto === 'TCP';
       const isEstablished = conn.status === 'ESTABLISHED';
       const isListen = conn.status === 'LISTEN';
       const hasRemote = conn.raddrIp !== null && conn.raddrPort !== null;
 
-      // TCP ESTABLISHED or UDP with remote -> remote endpoint
       if ((isTcp && isEstablished && hasRemote) || (!isTcp && hasRemote)) {
         if (isTcp) tcpEst++; else udpR++;
 
@@ -160,6 +178,10 @@ export class Model {
           geo = this.geo.lookup(ip);
         }
 
+        // Queue metrics
+        const qKey = `${ip}:${port}`;
+        const queue = queueMap.get(qKey);
+
         const item: CacheItem = {
           ip, port,
           proto: conn.proto,
@@ -170,11 +192,15 @@ export class Model {
           processName: conn.processName,
           processExe: conn.processExe,
           ...geo,
+          hostname: null, // filled after DNS batch
+          txQueue: queue?.txQueue ?? 0,
+          rxQueue: queue?.rxQueue ?? 0,
         };
         cacheItems.push(item);
 
+        let mc: MapCandidate | null = null;
         if (scope === 'PUBLIC' && geo.lat !== null && geo.lon !== null) {
-          mapCandidates.push({
+          mc = {
             ip, port,
             proto: conn.proto,
             lat: roundCoord(geo.lat),
@@ -185,10 +211,15 @@ export class Model {
             asnOrg: geo.asnOrg,
             processLabel: conn.processLabel,
             pid: conn.pid,
-          });
+            hostname: null,
+            queueBytes: (queue?.txQueue ?? 0) + (queue?.rxQueue ?? 0),
+          };
+          mapCandidates.push(mc);
         }
+
+        if (scope === 'PUBLIC') publicIps.push(ip);
+        pending.push({ item, mapCandidate: mc });
       }
-      // TCP LISTEN or UDP without remote -> open port
       else if ((isTcp && isListen) || (!isTcp && !hasRemote)) {
         if (isTcp) tcpLst++; else udpB++;
 
@@ -205,6 +236,16 @@ export class Model {
         });
       } else {
         if (isTcp) tcpEst++; else udpR++;
+      }
+    }
+
+    // Batch DNS resolution for public IPs
+    if (publicIps.length > 0) {
+      const dnsResults = await this.dns.batchResolve(publicIps);
+      for (const { item, mapCandidate } of pending) {
+        const hostname = dnsResults.get(item.ip) ?? null;
+        item.hostname = hostname;
+        if (mapCandidate) mapCandidate.hostname = hostname;
       }
     }
 

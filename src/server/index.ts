@@ -9,6 +9,7 @@ import open from 'open';
 import { SERVER_HOST, SERVER_PORT, POLL_INTERVAL_MS, MY_LOCATION, geoDataDir } from './config.js';
 import { GeoInfo } from './geoinfo.js';
 import { Model, Snapshot } from './model.js';
+import { DnsResolver } from './dnsinfo.js';
 import { detectPublicIp } from './public-ip.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -78,7 +79,8 @@ async function main() {
   }
 
   // Initialize model
-  const model = new Model(geo);
+  const dnsResolver = new DnsResolver();
+  const model = new Model(geo, dnsResolver);
 
   // Setup Fastify
   const app = Fastify({ logger: false });

@@ -12,6 +12,9 @@ export const GEO_CACHE_MAX = 10_000;
 export const SERVER_HOST = '127.0.0.1';
 export const SERVER_PORT = 8050;
 
+export const DNS_TIMEOUT_MS = 1_500;
+export const DNS_CACHE_MAX = 5_000;
+
 /** Location mode: "auto" detects via public IP, "none" disables, or [lon, lat] tuple */
 export type LocationMode = 'auto' | 'none' | [number, number];
 export const MY_LOCATION: LocationMode = 'auto';

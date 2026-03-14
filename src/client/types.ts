@@ -10,6 +10,8 @@ export interface MapCandidate {
   asnOrg: string | null;
   processLabel: string;
   pid: number | null;
+  hostname: string | null;
+  queueBytes: number;
 }
 
 export interface CacheItem {
@@ -28,6 +30,9 @@ export interface CacheItem {
   country: string | null;
   asn: number | null;
   asnOrg: string | null;
+  hostname: string | null;
+  txQueue: number;
+  rxQueue: number;
 }
 
 export interface OpenPort {

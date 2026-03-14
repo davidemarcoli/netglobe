@@ -1,4 +1,5 @@
-import type { Snapshot, CacheItem, OpenPort, MapCandidate } from './types.js';
+import type { Snapshot, CacheItem, MapCandidate } from './types.js';
+import { renderInsights } from './insights.js';
 
 const overlay = () => document.getElementById('modal-overlay')!;
 const body = () => document.getElementById('modal-body')!;
@@ -26,6 +27,8 @@ export function showHelp() {
         <tr><td><kbd>U</kbd></td><td>Unmapped services — public IPs without geolocation</td></tr>
         <tr><td><kbd>L</kbd></td><td>LAN / Local — private network and loopback connections</td></tr>
         <tr><td><kbd>O</kbd></td><td>Open ports — listening TCP and bound UDP sockets</td></tr>
+        <tr><td><kbd>I</kbd></td><td>Insights — connection analytics and breakdowns</td></tr>
+        <tr><td><kbd>V</kbd></td><td>Toggle markers / heatmap view</td></tr>
         <tr><td><kbd>T</kbd></td><td>Dump connection cache to terminal (server console)</td></tr>
         <tr><td><kbd>C</kbd></td><td>Clear the connection cache and map markers</td></tr>
         <tr><td><kbd>R</kbd></td><td>Recheck GeoIP databases on disk</td></tr>
@@ -58,11 +61,16 @@ export function showAbout(config: { geoEnabled: boolean; geoDataDir: string }) {
     ${!config.geoEnabled ? `
       <h3>GeoIP Setup</h3>
       <p>Download the free <strong>GeoLite2-City.mmdb</strong> and optionally <strong>GeoLite2-ASN.mmdb</strong> from
-      <a href="https://dev.maxmind.com/geoip/geolite2-free-geolocation-data" target="_blank" style="color:var(--green)">MaxMind</a>
+      <a href="https://dev.maxmind.com/geoip/geolite2-free-geolocation-data" target="_blank" style="color:var(--accent)">MaxMind</a>
       and place them in:<br><code>${esc(config.geoDataDir)}</code></p>
       <p>Then press <kbd>R</kbd> to reload.</p>
     ` : ''}
   `);
+}
+
+export function showInsights(snapshot: Snapshot | null) {
+  if (!snapshot) return openModal('<h2>INSIGHTS</h2><p class="empty-message">No data yet</p>');
+  openModal(renderInsights(snapshot));
 }
 
 export function showUnmapped(snapshot: Snapshot | null) {
@@ -75,12 +83,12 @@ export function showUnmapped(snapshot: Snapshot | null) {
 
   const rows = aggregateServices(unmapped).map(r => `
     <tr>
-      <td title="${esc(r.scope)}">${esc(r.scope)}</td>
-      <td title="${esc(r.ip)}">${esc(r.ip)}</td>
+      <td title="${esc(r.ip)}">${esc(r.hostname || r.ip)}</td>
       <td>${r.port}</td>
       <td>${esc(r.proto)}</td>
       <td title="${esc(r.service)}">${esc(r.service)}</td>
       <td title="${esc(r.process)}">${esc(r.process)}</td>
+      <td>${formatQueue(r.txQueue, r.rxQueue)}</td>
       <td>${r.count > 1 ? r.count : ''}</td>
     </tr>
   `).join('');
@@ -89,7 +97,7 @@ export function showUnmapped(snapshot: Snapshot | null) {
     <h2>UNMAPPED SERVICES</h2>
     <p>${unmapped.length} public service${unmapped.length > 1 ? 's' : ''} without geolocation data</p>
     <table>
-      <thead><tr><th>Scope</th><th>IP</th><th>Port</th><th>Proto</th><th>Service</th><th>Process</th><th>#</th></tr></thead>
+      <thead><tr><th>Host</th><th>Port</th><th>Proto</th><th>Service</th><th>Process</th><th>Queue</th><th>#</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `);
@@ -133,7 +141,6 @@ export function showOpenPorts(snapshot: Snapshot | null) {
     return openModal('<h2>OPEN PORTS</h2><p class="empty-message">No open ports detected</p>');
   }
 
-  // Sort by scope, proto, port
   const sorted = [...ports].sort((a, b) => {
     const scopeOrder = (s: string) => s === 'ALL' ? 0 : s === 'PUBLIC' ? 1 : s === 'LAN' ? 2 : 3;
     return scopeOrder(a.bindScope) - scopeOrder(b.bindScope)
@@ -173,11 +180,11 @@ export function showMarkerDetail(key: string, items: MapCandidate[]) {
   const rows = items.map(i => `
     <tr>
       <td>${esc(i.proto)}</td>
-      <td title="${esc(i.ip)}">${esc(i.ip)}</td>
+      <td title="${esc(i.ip)}">${esc(i.hostname || i.ip)}</td>
       <td>${i.port}</td>
       <td title="${esc(i.asnOrg || '')}">${esc(i.asnOrg || 'N/A')}</td>
       <td title="${esc(i.processLabel)}">${esc(i.processLabel)}</td>
-      <td>${i.pid || ''}</td>
+      <td>${formatBytes(i.queueBytes)}</td>
     </tr>
   `).join('');
 
@@ -186,7 +193,7 @@ export function showMarkerDetail(key: string, items: MapCandidate[]) {
     ${orgs.length ? `<p>${orgs.map(o => esc(o)).join(', ')}</p>` : ''}
     <p>${items.length} service${items.length > 1 ? 's' : ''} at ${first.lat.toFixed(3)}, ${first.lon.toFixed(3)}</p>
     <table>
-      <thead><tr><th>Proto</th><th>IP</th><th>Port</th><th>Organization</th><th>Process</th><th>PID</th></tr></thead>
+      <thead><tr><th>Proto</th><th>Host</th><th>Port</th><th>Org</th><th>Process</th><th>Queue</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `);
@@ -194,7 +201,7 @@ export function showMarkerDetail(key: string, items: MapCandidate[]) {
 
 // Helpers
 
-function esc(s: string): string {
+export function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
@@ -204,14 +211,38 @@ function prettyBindIp(ip: string): string {
   return ip;
 }
 
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatQueue(tx: number, rx: number): string {
+  const total = tx + rx;
+  if (total === 0) return '—';
+  return formatBytes(total);
+}
+
+function queueColor(tx: number, rx: number): string {
+  const total = tx + rx;
+  if (total === 0) return '';
+  if (total < 1024) return 'color: var(--accent)';
+  if (total < 65536) return 'color: var(--marker-cluster)';
+  return 'color: var(--marker-primary)';
+}
+
 interface AggregatedRow {
   scope: string;
   ip: string;
+  hostname: string | null;
   port: number;
   proto: string;
   service: string;
   process: string;
   count: number;
+  txQueue: number;
+  rxQueue: number;
 }
 
 function aggregateServices(items: CacheItem[]): AggregatedRow[] {
@@ -221,15 +252,20 @@ function aggregateServices(items: CacheItem[]): AggregatedRow[] {
     const existing = map.get(key);
     if (existing) {
       existing.count++;
+      existing.txQueue += item.txQueue;
+      existing.rxQueue += item.rxQueue;
     } else {
       map.set(key, {
         scope: item.scope,
         ip: item.ip,
+        hostname: item.hostname,
         port: item.port,
         proto: item.proto,
         service: item.serviceName || '',
         process: item.processLabel,
         count: 1,
+        txQueue: item.txQueue,
+        rxQueue: item.rxQueue,
       });
     }
   }

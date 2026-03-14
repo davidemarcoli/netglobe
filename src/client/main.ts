@@ -46,6 +46,15 @@ function handleAction(action: string) {
     case 'open_ports':
       modal.showOpenPorts(lastSnapshot);
       break;
+    case 'insights':
+      modal.showInsights(lastSnapshot);
+      break;
+    case 'toggle_view': {
+      const mode = netglobe.toggleMode();
+      setFlash(`View: ${mode.toUpperCase()}`, 2000);
+      if (lastSnapshot) updateStatus(lastSnapshot, netglobe.markerCount, netglobe.mode);
+      break;
+    }
     case 'help':
       modal.showHelp();
       break;
@@ -141,7 +150,7 @@ function handleMessage(msg: ServerMessage) {
       netglobe.update(candidates);
 
       // Update status bar
-      updateStatus(msg.data, netglobe.markerCount);
+      updateStatus(msg.data, netglobe.markerCount, netglobe.mode);
       break;
     }
 

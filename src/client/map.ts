@@ -1,5 +1,5 @@
 import type { MapCandidate } from './types.js';
-import { getMarkerColors } from './theme.js';
+import { getMarkerColors, getCssVar } from './theme.js';
 
 declare const L: typeof import('leaflet');
 
@@ -11,6 +11,8 @@ interface MarkerEntry {
   data: MapCandidate;
 }
 
+export type ViewMode = 'markers' | 'heatmap';
+
 export class NetGlobeMap {
   private map!: L.Map;
   private markers = new Map<string, MarkerEntry>();
@@ -18,6 +20,13 @@ export class NetGlobeMap {
   private myLocation: { lat: number; lon: number } | null = null;
   private myLocationInfo: { city?: string | null; country?: string | null } = {};
   private onMarkerClick: ((key: string, items: MapCandidate[]) => void) | null = null;
+
+  // Heatmap state
+  private _mode: ViewMode = 'markers';
+  private heatLayer: any = null;
+  private lastCandidates: MapCandidate[] = [];
+
+  get mode(): ViewMode { return this._mode; }
 
   init(container: string) {
     this.map = L.map(container, {
@@ -87,24 +96,100 @@ export class NetGlobeMap {
     this.onMarkerClick = handler;
   }
 
-  /** Re-apply theme colors to all existing markers and lines */
+  // ── View mode toggle ──
+
+  toggleMode(): ViewMode {
+    if (this._mode === 'markers') {
+      this._mode = 'heatmap';
+      this._hideMarkers();
+      this._showHeatmap(this.lastCandidates);
+    } else {
+      this._mode = 'markers';
+      this._hideHeatmap();
+      this._showMarkers();
+      // Re-run update to restore markers
+      this.update(this.lastCandidates);
+    }
+    return this._mode;
+  }
+
+  private _hideMarkers() {
+    for (const [, entry] of this.markers) {
+      entry.marker.remove();
+      entry.line?.remove();
+    }
+  }
+
+  private _showMarkers() {
+    for (const [, entry] of this.markers) {
+      entry.marker.addTo(this.map);
+      entry.line?.addTo(this.map);
+    }
+  }
+
+  private _showHeatmap(candidates: MapCandidate[]) {
+    // Group by coordinates and count for intensity
+    const groups = new Map<string, { lat: number; lon: number; count: number }>();
+    for (const c of candidates) {
+      const key = `${c.lat},${c.lon}`;
+      const existing = groups.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        groups.set(key, { lat: c.lat, lon: c.lon, count: 1 });
+      }
+    }
+
+    const points = [...groups.values()].map(g => [g.lat, g.lon, g.count] as [number, number, number]);
+    const maxIntensity = Math.max(1, ...points.map(p => p[2]));
+
+    const accent = getCssVar('--accent');
+
+    // leaflet.heat expects L.heatLayer on the global L
+    const heatLayerFn = (L as any).heatLayer;
+    if (!heatLayerFn) return;
+
+    this.heatLayer = heatLayerFn(points, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 10,
+      max: maxIntensity,
+      gradient: {
+        0.2: accent + '40',
+        0.4: accent + '80',
+        0.6: accent + 'cc',
+        0.8: accent,
+        1.0: '#ffffff',
+      },
+    }).addTo(this.map);
+  }
+
+  private _hideHeatmap() {
+    if (this.heatLayer) {
+      this.heatLayer.remove();
+      this.heatLayer = null;
+    }
+  }
+
+  // ── Theme refresh ──
+
   refreshColors() {
     const colors = getMarkerColors();
 
-    // Rebuild my-location marker with new color
     if (this.myMarker) {
       this.myMarker.remove();
       this.myMarker = null;
       this._createMyMarker();
     }
 
-    // Recompute cluster flags and recolor all markers
-    const groups = new Map<string, MarkerEntry>();
-    for (const [key, entry] of this.markers) {
-      groups.set(key, entry);
+    if (this._mode === 'heatmap') {
+      this._hideHeatmap();
+      this._showHeatmap(this.lastCandidates);
+      return;
     }
 
-    const coords = [...groups.entries()].map(([key, entry]) => ({
+    // Recompute cluster flags and recolor all markers
+    const coords = [...this.markers.entries()].map(([key, entry]) => ({
       key,
       lat: entry.data.lat,
       lon: entry.data.lon,
@@ -120,7 +205,7 @@ export class NetGlobeMap {
       }
     }
 
-    for (const [key, entry] of groups) {
+    for (const [key, entry] of this.markers) {
       const color = nearFlags.has(key) ? colors.cluster : colors.primary;
       entry.marker.setStyle({ color, fillColor: color });
       if (entry.line) {
@@ -129,7 +214,18 @@ export class NetGlobeMap {
     }
   }
 
+  // ── Main update ──
+
   update(candidates: MapCandidate[]) {
+    this.lastCandidates = candidates;
+
+    // If in heatmap mode, update the heatmap instead
+    if (this._mode === 'heatmap') {
+      this._hideHeatmap();
+      this._showHeatmap(candidates);
+      return;
+    }
+
     const colors = getMarkerColors();
 
     // Group by rounded coordinates
@@ -170,11 +266,16 @@ export class NetGlobeMap {
       // Build tooltip
       const places = new Set(items.map(i => [i.city, i.country].filter(Boolean).join(', ')).filter(Boolean));
       const orgs = new Set(items.filter(i => i.asnOrg).map(i => i.asnOrg!));
-      const services = items.map(i => `${i.proto} :${i.port} ${i.processLabel}`);
+      const hostnames = new Set(items.filter(i => i.hostname).map(i => i.hostname!));
+      const services = items.map(i => {
+        const host = i.hostname ? ` (${i.hostname})` : '';
+        return `${i.proto} :${i.port} ${i.processLabel}${host}`;
+      });
 
       let tip = '';
       if (places.size) tip += [...places].join(' / ') + '\n';
       if (orgs.size) tip += [...orgs].join(', ') + '\n';
+      if (hostnames.size && hostnames.size <= 3) tip += [...hostnames].join(', ') + '\n';
       tip += `${items.length} service${items.length > 1 ? 's' : ''}\n`;
       tip += services.slice(0, 8).join('\n');
       if (services.length > 8) tip += `\n... +${services.length - 8} more`;
@@ -235,6 +336,7 @@ export class NetGlobeMap {
       entry.line?.remove();
     }
     this.markers.clear();
+    this._hideHeatmap();
   }
 
   get markerCount(): number {

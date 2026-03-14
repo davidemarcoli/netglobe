@@ -9,6 +9,10 @@ NetGlobe monitors your active network connections and plots remote endpoints on 
 **Features:**
 - Live map with connection markers and lines from your location
 - Cluster highlighting for nearby endpoints (within 25km)
+- Heatmap mode — toggle between markers and a heat overlay (`V`)
+- Insights panel — country/org breakdowns, top processes, protocol mix (`I`)
+- Reverse DNS resolution — hostnames shown in tooltips and tables
+- Bandwidth estimation — TX/RX queue sizes from `/proc/net/tcp`
 - Open ports monitor (TCP LISTEN / UDP bound)
 - Unmapped and LAN/local connection views
 - Three selectable themes: Amber (retro CRT), Cyberpunk (blue), Threat Intel (red)
@@ -55,6 +59,8 @@ Opens at `http://127.0.0.1:8050`.
 | `U`   | Unmapped services             |
 | `L`   | LAN / local connections       |
 | `O`   | Open ports                    |
+| `I`   | Insights (analytics)          |
+| `V`   | Toggle markers / heatmap      |
 | `T`   | Dump cache to terminal        |
 | `C`   | Clear cache                   |
 | `R`   | Recheck GeoIP databases       |
