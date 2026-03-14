@@ -35,9 +35,9 @@ export function showHelp() {
       </tbody>
     </table>
     <h3>Map Legend</h3>
-    <p><span style="color:#ff00ff">&#9679;</span> <strong>Magenta</strong> — Remote connection endpoint</p>
-    <p><span style="color:#ffff00">&#9679;</span> <strong>Yellow</strong> — Clustered endpoints (within 25km of each other)</p>
-    <p><span style="color:#00ffff">&#9679;</span> <strong>Cyan</strong> — Your location</p>
+    <p><span style="color:var(--marker-primary)">&#9679;</span> <strong>Primary</strong> — Remote connection endpoint</p>
+    <p><span style="color:var(--marker-cluster)">&#9679;</span> <strong>Cluster</strong> — Endpoints within 25km of each other</p>
+    <p><span style="color:var(--marker-me)">&#9679;</span> <strong>You</strong> — Your location</p>
     <h3>Privacy</h3>
     <p>All data is collected and processed locally. Nothing is sent externally except public IP detection (ipify.org) for the "auto" location mode.</p>
   `);

@@ -1,6 +1,7 @@
 import { NetGlobeMap } from './map.js';
 import { initKeyboard, KeyAction } from './keyboard.js';
 import { initMenu } from './menu.js';
+import { initTheme } from './theme.js';
 import { updateStatus, setFlash } from './status-bar.js';
 import * as modal from './modal.js';
 import type { Snapshot, ConfigMessage, ServerMessage, MapCandidate } from './types.js';
@@ -68,6 +69,9 @@ initKeyboard((action: KeyAction) => handleAction(action));
 
 // Init menu
 const menu = initMenu(handleAction);
+
+// Init theme switcher (re-color markers on theme change)
+initTheme(() => netglobe.refreshColors());
 
 // Modal close button
 document.getElementById('modal-close')!.addEventListener('click', modal.closeModal);

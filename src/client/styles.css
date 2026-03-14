@@ -1,17 +1,67 @@
-:root {
-  --bg: #020602;
-  --bg-panel: rgba(2, 6, 2, 0.92);
-  --green: #00ff66;
-  --green-soft: #00cc52;
-  --green-faint: rgba(0, 255, 102, 0.08);
-  --green-border: rgba(0, 255, 102, 0.25);
-  --magenta: #ff00ff;
-  --cyan: #00ffff;
-  --yellow: #ffff00;
-  --text: #c0ffc0;
-  --text-dim: #608060;
-  --font: 'DejaVu Sans Mono', 'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+/* ============================================
+   THEMES
+   ============================================ */
+
+/* Amber / Retro CRT (default) */
+[data-theme="amber"], :root {
+  --bg: #0a0800;
+  --bg-panel: rgba(10, 8, 0, 0.94);
+  --accent: #ffb000;
+  --accent-soft: #cc8a00;
+  --accent-faint: rgba(255, 176, 0, 0.08);
+  --accent-border: rgba(255, 176, 0, 0.25);
+  --accent-glow: rgba(255, 176, 0, 0.5);
+  --accent-hover: rgba(255, 176, 0, 0.15);
+  --marker-primary: #00ccff;
+  --marker-cluster: #ff3366;
+  --marker-me: #ffb000;
+  --text: #dda040;
+  --text-dim: #806030;
+  --modal-overlay: rgba(10, 8, 0, 0.85);
+  --scanline: rgba(255, 176, 0, 0.03);
 }
+
+/* Blue / Cyberpunk */
+[data-theme="cyber"] {
+  --bg: #050510;
+  --bg-panel: rgba(5, 5, 16, 0.94);
+  --accent: #00aaff;
+  --accent-soft: #0088cc;
+  --accent-faint: rgba(0, 170, 255, 0.08);
+  --accent-border: rgba(0, 170, 255, 0.25);
+  --accent-glow: rgba(0, 170, 255, 0.5);
+  --accent-hover: rgba(0, 170, 255, 0.15);
+  --marker-primary: #ff2266;
+  --marker-cluster: #cc44ff;
+  --marker-me: #00ffaa;
+  --text: #8899cc;
+  --text-dim: #445577;
+  --modal-overlay: rgba(5, 5, 16, 0.85);
+  --scanline: rgba(0, 170, 255, 0.02);
+}
+
+/* Red / Threat Intel */
+[data-theme="threat"] {
+  --bg: #080404;
+  --bg-panel: rgba(8, 4, 4, 0.94);
+  --accent: #ff2244;
+  --accent-soft: #cc1a36;
+  --accent-faint: rgba(255, 34, 68, 0.08);
+  --accent-border: rgba(255, 34, 68, 0.25);
+  --accent-glow: rgba(255, 34, 68, 0.5);
+  --accent-hover: rgba(255, 34, 68, 0.15);
+  --marker-primary: #00ddff;
+  --marker-cluster: #ffcc00;
+  --marker-me: #ff2244;
+  --text: #cc8888;
+  --text-dim: #664444;
+  --modal-overlay: rgba(8, 4, 4, 0.85);
+  --scanline: rgba(255, 34, 68, 0.02);
+}
+
+/* ============================================
+   BASE
+   ============================================ */
 
 * {
   margin: 0;
@@ -25,9 +75,29 @@ html, body {
   overflow: hidden;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Consolas', monospace;
   font-size: 13px;
 }
+
+/* Subtle CRT scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--scanline) 0px,
+    var(--scanline) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ============================================
+   MAP
+   ============================================ */
 
 #map {
   width: 100%;
@@ -35,20 +105,22 @@ html, body {
   background: var(--bg);
 }
 
-/* Dark leaflet overrides */
 .leaflet-container {
   background: var(--bg) !important;
 }
+.leaflet-bottom.leaflet-right {
+  margin-bottom: 28px;
+}
 .leaflet-control-zoom a {
   background: var(--bg-panel) !important;
-  color: var(--green) !important;
-  border-color: var(--green-border) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent-border) !important;
 }
 .leaflet-control-zoom a:hover {
-  background: rgba(0, 255, 102, 0.15) !important;
+  background: var(--accent-hover) !important;
 }
 .leaflet-control-attribution {
-  background: rgba(2, 6, 2, 0.7) !important;
+  background: var(--bg-panel) !important;
   color: var(--text-dim) !important;
   font-size: 10px !important;
 }
@@ -56,7 +128,10 @@ html, body {
   color: var(--text-dim) !important;
 }
 
-/* App title */
+/* ============================================
+   HEADER / TITLE
+   ============================================ */
+
 #app-title {
   position: fixed;
   top: 12px;
@@ -66,22 +141,58 @@ html, body {
   user-select: none;
 }
 .title-text {
-  font-size: 22px;
-  font-weight: bold;
-  color: var(--green);
-  text-shadow: 0 0 12px rgba(0, 255, 102, 0.5);
-  letter-spacing: 2px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow);
+  letter-spacing: 3px;
+  text-transform: uppercase;
 }
 .title-sub {
   display: block;
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
-  letter-spacing: 3px;
+  letter-spacing: 4px;
   text-transform: uppercase;
-  margin-top: -2px;
+  margin-top: 1px;
 }
 
-/* Menu button */
+/* ============================================
+   THEME SWITCHER
+   ============================================ */
+
+#theme-switcher {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 1001;
+  display: flex;
+  gap: 6px;
+}
+.theme-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  padding: 0;
+}
+.theme-btn:hover {
+  transform: scale(1.2);
+}
+.theme-btn.active {
+  border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 0 8px rgba(255,255,255,0.3);
+}
+.theme-btn[data-theme="amber"]  { background: #ffb000; }
+.theme-btn[data-theme="cyber"]  { background: #00aaff; }
+.theme-btn[data-theme="threat"] { background: #ff2244; }
+
+/* ============================================
+   MENU BUTTON
+   ============================================ */
+
 #menu-btn {
   position: fixed;
   top: 10px;
@@ -90,33 +201,37 @@ html, body {
   width: 36px;
   height: 36px;
   background: var(--bg-panel);
-  border: 1px solid var(--green-border);
-  color: var(--green);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
   font-size: 18px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.15s;
+  border-radius: 2px;
+  transition: background 0.15s, box-shadow 0.15s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 #menu-btn:hover {
-  background: rgba(0, 255, 102, 0.15);
+  background: var(--accent-hover);
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
-/* Menu overlay */
+/* ============================================
+   MENU PANEL
+   ============================================ */
+
 #menu-overlay {
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
   transition: opacity 0.2s;
 }
 #menu-overlay.hidden {
   display: none;
 }
 
-/* Menu panel */
 #menu-panel {
   position: fixed;
   top: 0;
@@ -125,13 +240,13 @@ html, body {
   width: 260px;
   height: 100%;
   background: var(--bg-panel);
-  border-right: 1px solid var(--green-border);
-  padding: 16px;
+  border-right: 1px solid var(--accent-border);
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   transform: translateX(0);
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s;
 }
 #menu-panel.hidden {
   transform: translateX(-100%);
@@ -139,40 +254,50 @@ html, body {
   pointer-events: none;
 }
 .menu-header {
-  font-size: 16px;
-  font-weight: bold;
-  color: var(--green);
-  margin-bottom: 8px;
-  letter-spacing: 1px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--accent-border);
 }
 #menu-panel button {
   background: transparent;
   border: 1px solid transparent;
   color: var(--text);
-  font-family: var(--font);
+  font-family: inherit;
   font-size: 12px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   text-align: left;
   cursor: pointer;
-  border-radius: 3px;
-  transition: background 0.12s, border-color 0.12s;
+  border-radius: 2px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  letter-spacing: 0.5px;
 }
 #menu-panel button:hover {
-  background: var(--green-faint);
-  border-color: var(--green-border);
+  background: var(--accent-faint);
+  border-color: var(--accent-border);
+  color: var(--accent);
 }
 #menu-panel hr {
   border: none;
-  border-top: 1px solid var(--green-border);
-  margin: 6px 0;
+  border-top: 1px solid var(--accent-border);
+  margin: 8px 0;
+  opacity: 0.5;
 }
 
-/* Modal */
+/* ============================================
+   MODAL
+   ============================================ */
+
 #modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: rgba(0, 4, 0, 0.8);
+  background: var(--modal-overlay);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -184,14 +309,16 @@ html, body {
 #modal-card {
   position: relative;
   background: var(--bg-panel);
-  border: 1px solid var(--green-border);
-  border-radius: 6px;
+  border: 1px solid var(--accent-border);
+  border-radius: 3px;
   width: min(900px, 90vw);
   max-height: 80vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 0 40px rgba(0, 255, 102, 0.08);
+  box-shadow:
+    0 0 30px var(--accent-faint),
+    inset 0 1px 0 var(--accent-faint);
 }
 #modal-close {
   position: absolute;
@@ -200,14 +327,14 @@ html, body {
   background: transparent;
   border: none;
   color: var(--text-dim);
-  font-size: 24px;
+  font-size: 22px;
   cursor: pointer;
   z-index: 1;
   line-height: 1;
   transition: color 0.15s;
 }
 #modal-close:hover {
-  color: var(--green);
+  color: var(--accent);
 }
 #modal-body {
   padding: 20px 24px;
@@ -215,49 +342,54 @@ html, body {
   flex: 1;
 }
 #modal-body h2 {
-  color: var(--green);
-  font-size: 16px;
-  margin: 0 0 12px 0;
-  letter-spacing: 1px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  letter-spacing: 3px;
+  text-transform: uppercase;
 }
 #modal-body h3 {
-  color: var(--green-soft);
-  font-size: 13px;
-  margin: 16px 0 6px 0;
+  color: var(--accent-soft);
+  font-size: 12px;
+  font-weight: 700;
+  margin: 18px 0 6px 0;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 #modal-body p {
   margin: 6px 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 #modal-body table {
   width: 100%;
   border-collapse: collapse;
-  margin: 8px 0;
+  margin: 10px 0;
   table-layout: fixed;
 }
 #modal-body th {
-  color: var(--green);
+  color: var(--accent);
   text-align: left;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--green-border);
-  font-weight: normal;
-  font-size: 11px;
+  border-bottom: 1px solid var(--accent-border);
+  font-weight: 600;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
   position: sticky;
   top: 0;
   background: var(--bg-panel);
 }
 #modal-body td {
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(0, 255, 102, 0.06);
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--accent-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 12px;
 }
 #modal-body tr:hover td {
-  background: var(--green-faint);
+  background: var(--accent-faint);
 }
 #modal-body .kv-table {
   table-layout: auto;
@@ -272,24 +404,36 @@ html, body {
 }
 #modal-body kbd {
   display: inline-block;
-  background: rgba(0, 255, 102, 0.1);
-  border: 1px solid var(--green-border);
-  border-radius: 3px;
-  padding: 1px 6px;
-  font-family: var(--font);
+  background: var(--accent-faint);
+  border: 1px solid var(--accent-border);
+  border-radius: 2px;
+  padding: 1px 7px;
+  font-family: inherit;
   font-size: 12px;
-  color: var(--green);
-  min-width: 22px;
+  color: var(--accent);
+  min-width: 24px;
   text-align: center;
 }
 #modal-body .empty-message {
   color: var(--text-dim);
   font-style: italic;
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
 }
+#modal-body code {
+  background: var(--accent-faint);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+#modal-body a {
+  color: var(--accent);
+}
 
-/* Status bar */
+/* ============================================
+   STATUS BAR
+   ============================================ */
+
 #status-bar {
   position: fixed;
   bottom: 0;
@@ -297,64 +441,83 @@ html, body {
   right: 0;
   z-index: 900;
   background: var(--bg-panel);
-  border-top: 1px solid var(--green-border);
-  padding: 5px 12px;
+  border-top: 1px solid var(--accent-border);
+  padding: 5px 14px;
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.5px;
 }
 #status-text {
   color: var(--text-dim);
 }
-.status-online { color: var(--green) !important; }
+.status-online { color: var(--accent) !important; }
 .status-offline { color: #ff4444 !important; }
 
-/* Leaflet tooltip overrides */
+/* ============================================
+   TOOLTIPS
+   ============================================ */
+
 .netglobe-tooltip {
   background: var(--bg-panel) !important;
-  border: 1px solid var(--green-border) !important;
+  border: 1px solid var(--accent-border) !important;
   color: var(--text) !important;
-  font-family: var(--font) !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
   font-size: 11px !important;
-  padding: 6px 10px !important;
-  border-radius: 4px !important;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.6) !important;
+  padding: 8px 12px !important;
+  border-radius: 2px !important;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.7) !important;
   white-space: pre-line !important;
   max-width: 400px !important;
+  line-height: 1.5 !important;
 }
 .netglobe-tooltip .leaflet-tooltip-tip {
   display: none !important;
 }
 
-/* Pulse animation for "my location" marker */
+/* ============================================
+   MARKERS
+   ============================================ */
+
 @keyframes pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--cyan); }
-  50% { opacity: 0.7; box-shadow: 0 0 16px var(--cyan); }
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--marker-me); }
+  50% { opacity: 0.7; box-shadow: 0 0 20px var(--marker-me), 0 0 40px var(--marker-me); }
 }
 .my-location-marker {
   border-radius: 50%;
   animation: pulse 2s ease-in-out infinite;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 8px; }
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb {
-  background: var(--green-border);
-  border-radius: 4px;
+  background: var(--accent-border);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 102, 0.4);
+  background: var(--accent-soft);
 }
 
-/* Flash message */
+/* ============================================
+   FLASH
+   ============================================ */
+
 .flash-active {
-  color: var(--green) !important;
+  color: var(--accent) !important;
   font-weight: bold;
 }
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
 
 @media (prefers-reduced-motion: reduce) {
   .my-location-marker { animation: none; }
   #menu-panel, #modal-overlay { transition: none; }
+  body::after { display: none; }
 }
